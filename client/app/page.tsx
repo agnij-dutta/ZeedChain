@@ -1,10 +1,10 @@
 'use client';
 
-import { WalletConnect } from '@/components/WalletConnect';
-import { NFTInvestment } from '@/components/NFTInvestment';
-import { GovernanceInterface } from '@/components/GovernanceInterface';
-import { ProfitDistribution } from '@/components/ProfitDistribution';
-import { useState } from 'react';
+import  WalletConnect  from '@/components/WalletConnect';
+import  NFTInvestment  from '@/components/NFTInvestment';
+import  GovernanceInterface  from '@/components/GovernanceInterface';
+import  ProfitDistribution  from '@/components/ProfitDistribution';
+import  { useState } from 'react';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('invest');

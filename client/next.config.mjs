@@ -21,9 +21,7 @@ const nextConfig = {
     images: {
         domains: ['zeedchain.io'],
     },
-    experimental: {
-        optimizeFonts: true,
-    }
+
 }
 
 export default nextConfig;
