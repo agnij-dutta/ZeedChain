@@ -23,7 +23,7 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen p-4">
+    <main className="min-h-screen p-4 dark">
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col items-center mb-8">
           <h1 className="text-4xl font-bold mb-6">ZeedChain Platform</h1>
