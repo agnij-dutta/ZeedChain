@@ -2,17 +2,13 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@chainlink/contracts/src/v0.8/ChainlinkClient.sol";
-import "@chainlink/contracts/src/v0.8/interfaces/AggregateV3Interface.sol";
-import "./EquityNFTFactory.sol";
 
-contract AIAdvisorIntegration is ChainlinkClient, Ownable {
-    using Chainlink for Chainlink.Request;
-
+contract AIAdvisorIntegration is Ownable {
     bytes32 private jobId;
     uint256 private fee;
     address private oracle;
-    
+    uint256 private constant PAYMENT = 0.1 * 10**18; // 0.1 LINK
+
     struct AIAdvice {
         uint256 startupId;
         uint256 confidenceScore;
@@ -25,44 +21,38 @@ contract AIAdvisorIntegration is ChainlinkClient, Ownable {
     
     event AdviceRequested(bytes32 indexed requestId, uint256 indexed startupId);
     event AdviceReceived(uint256 indexed startupId, string recommendation, uint256 confidenceScore);
+    event RequestFailed(bytes32 indexed requestId, bytes reason);
 
-    constructor(address _linkToken, address _oracle) Ownable() {
-        setChainlinkToken(_linkToken);
+    constructor(address _oracle) Ownable() {
         oracle = _oracle;
-        jobId = "ca98366cc7314957b8c012c72f05aeeb"; // Example Chainlink JobID
-        fee = (1 * LINK_DIVISIBILITY) / 10; // 0.1 LINK
+        jobId = bytes32("ca98366cc7314957b8c012c72f05aeeb");
+        fee = PAYMENT;
     }
 
     function requestAIAdvice(uint256 startupId) external {
-        Chainlink.Request memory req = buildChainlinkRequest(jobId, address(this), this.fulfillAIAdvice.selector);
-        
-        // Add the startup ID to the request
-        req.add("startupId", uint256ToString(startupId));
-        
-        // Send the request
-        bytes32 requestId = sendChainlinkRequest(req, fee);
+        // Will be implemented with actual oracle service
+        bytes32 requestId = keccak256(abi.encodePacked(startupId, block.timestamp));
         requestToStartupId[requestId] = startupId;
-        
         emit AdviceRequested(requestId, startupId);
+        
+        // For testing purposes, directly call fulfill
+        mockFulfillAIAdvice(requestId);
     }
 
-    function fulfillAIAdvice(
-        bytes32 requestId,
-        uint256 confidenceScore,
-        string memory recommendation
-    ) external recordChainlinkFulfillment(requestId) {
+    // Temporary mock function for testing
+    function mockFulfillAIAdvice(bytes32 requestId) internal {
         uint256 startupId = requestToStartupId[requestId];
+        string memory mockRecommendation = "AI recommends proceeding with investment based on strong market potential";
         
         AIAdvice memory newAdvice = AIAdvice({
             startupId: startupId,
-            confidenceScore: confidenceScore,
-            recommendation: recommendation,
+            confidenceScore: 85,
+            recommendation: mockRecommendation,
             timestamp: block.timestamp
         });
         
         startupAdvice[startupId].push(newAdvice);
-        
-        emit AdviceReceived(startupId, recommendation, confidenceScore);
+        emit AdviceReceived(startupId, mockRecommendation, 85);
     }
 
     function getLatestAdvice(uint256 startupId) external view returns (
@@ -79,38 +69,15 @@ contract AIAdvisorIntegration is ChainlinkClient, Ownable {
         return startupAdvice[startupId];
     }
 
-    function updateJobId(bytes32 _jobId) external onlyOwner {
-        jobId = _jobId;
-    }
-
     function updateOracle(address _oracle) external onlyOwner {
         oracle = _oracle;
+    }
+
+    function updateJobId(bytes32 _jobId) external onlyOwner {
+        jobId = _jobId;
     }
 
     function updateFee(uint256 _fee) external onlyOwner {
         fee = _fee;
     }
-
-    // Helper function to convert uint to string
-    function uint256ToString(uint256 value) internal pure returns (string memory) {
-        if (value == 0) {
-            return "0";
-        }
-        uint256 temp = value;
-        uint256 digits;
-        while (temp != 0) {
-            digits++;
-            temp /= 10;
-        }
-        bytes memory buffer = new bytes(digits);
-        while (value != 0) {
-            digits -= 1;
-            buffer[digits] = bytes1(uint8(48 + uint256(value % 10)));
-            value /= 10;
-        }
-        return string(buffer);
-    }
-
-    // Allow contract to receive LINK tokens
-    receive() external payable {}
 }

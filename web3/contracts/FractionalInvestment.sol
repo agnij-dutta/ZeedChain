@@ -71,6 +71,10 @@ contract FractionalInvestment is ERC1155, Ownable, ReentrancyGuard {
         emit InvestmentMade(startupId, msg.sender, sharesToBuy, msg.value);
     }
 
+    function getTotalInvestment(uint256 startupId) external view returns (uint256) {
+        return totalInvestment[startupId];
+    }
+
     function getInvestorShares(uint256 startupId, address investor) external view returns (uint256) {
         return balanceOf(investor, startupId);
     }

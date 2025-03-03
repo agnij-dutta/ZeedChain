@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 contract MockV3Aggregator {
-    uint8 public constant decimals = 8;
+    uint8 public decimals;
     int256 public latestAnswer;
     uint256 public latestTimestamp;
     uint256 public latestRound;

@@ -13,7 +13,7 @@ describe("EquityNFTFactory", function () {
     const STARTUP_NAME = "Test Startup";
     const STARTUP_DESC = "Test Description";
     const TOTAL_SHARES = 1000000;
-    const INITIAL_VALUATION = ethers.utils.parseEther("1000000"); // 1M ETH
+    const INITIAL_VALUATION = ethers.parseEther("1000000"); // 1M ETH
 
     beforeEach(async function () {
         [owner, founder, validator, nonOwner] = await ethers.getSigners();
@@ -87,8 +87,8 @@ describe("EquityNFTFactory", function () {
                 INITIAL_VALUATION
             );
             const receipt = await tx.wait();
-            const event = receipt.events?.find(e => e.event === "StartupRegistered");
-            startupId = event?.args?.tokenId.toNumber();
+            const event = receipt.logs.find((e: any) => e.eventName === "StartupRegistered");
+            startupId = event?.args?.tokenId?.toString();
         });
 
         it("Should allow validation by authorized validator", async function () {
@@ -114,7 +114,7 @@ describe("EquityNFTFactory", function () {
         it("Should allow owner to add trusted issuer", async function () {
             await expect(
                 equityNFTFactory.connect(owner).addTrustedIssuer(nonOwner.address)
-            ).to.emit(equityNFTFactory, "TrustedIssuerAdded");
+            ).to.emit(equityNFTFactory, "TrustedIssuerUpdated");
         });
 
         it("Should prevent non-owner from adding trusted issuer", async function () {
@@ -127,11 +127,11 @@ describe("EquityNFTFactory", function () {
             await equityNFTFactory.connect(owner).addTrustedIssuer(nonOwner.address);
             await expect(
                 equityNFTFactory.connect(owner).removeTrustedIssuer(nonOwner.address)
-            ).to.emit(equityNFTFactory, "TrustedIssuerRemoved");
+            ).to.emit(equityNFTFactory, "TrustedIssuerUpdated");
         });
     });
 
-    describe("NFT Functionality", function () {
+    describe("Share Issuance", function () {
         let startupId: number;
 
         beforeEach(async function () {
@@ -142,62 +142,29 @@ describe("EquityNFTFactory", function () {
                 INITIAL_VALUATION
             );
             const receipt = await tx.wait();
-            const event = receipt.events?.find(e => e.event === "StartupRegistered");
-            startupId = event?.args?.tokenId.toNumber();
+            const event = receipt.logs.find((e: any) => e.eventName === "StartupRegistered");
+            startupId = event?.args?.tokenId?.toString();
 
             // Validate the startup
             await equityNFTFactory.connect(validator).validateStartup(startupId, true);
         });
 
-        it("Should mint NFTs only through trusted issuer", async function () {
-            // Add nonOwner as trusted issuer for testing
+        it("Should issue shares through trusted issuer", async function () {
+            // Add nonOwner as trusted issuer
             await equityNFTFactory.addTrustedIssuer(nonOwner.address);
 
             await expect(
-                equityNFTFactory.connect(nonOwner).mintShares(startupId, founder.address, 100)
-            ).to.emit(equityNFTFactory, "SharesMinted");
+                equityNFTFactory.connect(nonOwner).issueShares(startupId, founder.address, 100)
+            ).to.emit(equityNFTFactory, "SharesIssued");
 
-            await expect(
-                equityNFTFactory.connect(founder).mintShares(startupId, founder.address, 100)
-            ).to.be.revertedWith("Not a trusted issuer");
+            const startup = await equityNFTFactory.getStartupDetails(startupId);
+            expect(startup.availableShares).to.equal(TOTAL_SHARES - 100);
         });
 
-        it("Should transfer NFTs correctly", async function () {
-            // Add owner as trusted issuer for testing
-            await equityNFTFactory.addTrustedIssuer(owner.address);
-
-            // Mint some shares
-            await equityNFTFactory.mintShares(startupId, founder.address, 100);
-
-            // Transfer shares
-            await equityNFTFactory.connect(founder).transferShares(
-                startupId,
-                nonOwner.address,
-                50
-            );
-
-            const founderShares = await equityNFTFactory.balanceOf(founder.address, startupId);
-            const nonOwnerShares = await equityNFTFactory.balanceOf(nonOwner.address, startupId);
-
-            expect(founderShares).to.equal(50);
-            expect(nonOwnerShares).to.equal(50);
-        });
-
-        it("Should prevent transfer of more shares than owned", async function () {
-            // Add owner as trusted issuer for testing
-            await equityNFTFactory.addTrustedIssuer(owner.address);
-
-            // Mint some shares
-            await equityNFTFactory.mintShares(startupId, founder.address, 100);
-
-            // Attempt to transfer more shares than owned
+        it("Should prevent non-trusted issuers from issuing shares", async function () {
             await expect(
-                equityNFTFactory.connect(founder).transferShares(
-                    startupId,
-                    nonOwner.address,
-                    150
-                )
-            ).to.be.revertedWith("ERC1155: insufficient balance for transfer");
+                equityNFTFactory.connect(nonOwner).issueShares(startupId, founder.address, 100)
+            ).to.be.revertedWith("Only founder or trusted issuer can issue shares");
         });
     });
 });

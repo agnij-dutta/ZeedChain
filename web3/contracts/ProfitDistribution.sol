@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./FractionalInvestment.sol";
+import "./EquityNFTFactory.sol";
 
 contract ProfitDistribution is ReentrancyGuard {
     using EnumerableSet for EnumerableSet.UintSet;
@@ -49,7 +50,10 @@ contract ProfitDistribution is ReentrancyGuard {
         uint256 shares = fractionalInvestment.getInvestorShares(startupId, msg.sender);
         require(shares > 0, "No shares owned");
 
-        uint256 totalShares = fractionalInvestment.getTotalShares(startupId);
+        // Get total shares from startup details
+        EquityNFTFactory.Startup memory startup = fractionalInvestment.equityFactory().getStartupDetails(startupId);
+        uint256 totalShares = startup.totalShares;
+
         uint256 amount = (distribution.totalAmount * shares) / totalShares;
         
         distribution.claimed[msg.sender] = true;

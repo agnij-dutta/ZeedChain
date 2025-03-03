@@ -29,6 +29,7 @@ contract EquityNFTFactory is ERC721, Ownable {
     event StartupValidated(uint256 indexed tokenId, bool status);
     event SharesIssued(uint256 indexed tokenId, address to, uint256 shares);
     event TrustedIssuerUpdated(address indexed issuer, bool status);
+    event ValuationUpdated(uint256 indexed tokenId, uint256 oldValuation, uint256 newValuation);
 
     constructor() ERC721("ZeedChain Equity", "ZEED") Ownable() {}
 
@@ -38,6 +39,10 @@ contract EquityNFTFactory is ERC721, Ownable {
         uint256 totalShares,
         uint256 initialValuation
     ) external returns (uint256) {
+        require(bytes(name).length > 0, "Name cannot be empty");
+        require(totalShares > 0, "Total shares must be greater than 0");
+        require(initialValuation > 0, "Initial valuation must be greater than 0");
+        
         _nextTokenId++;
         uint256 newTokenId = _nextTokenId;
 
@@ -59,7 +64,8 @@ contract EquityNFTFactory is ERC721, Ownable {
     }
 
     function validateStartup(uint256 tokenId, bool status) external {
-        require(validators[msg.sender], "Not authorized validator");
+        require(validators[msg.sender], "Not a validator");
+        require(_exists(tokenId), "Startup does not exist");
         startups[tokenId].isValidated = status;
         emit StartupValidated(tokenId, status);
     }
@@ -83,12 +89,22 @@ contract EquityNFTFactory is ERC721, Ownable {
     }
 
     function updateValuation(uint256 tokenId, uint256 newValuation) external {
-        require(msg.sender == startups[tokenId].founder, "Only founder can update valuation");
+        require(_exists(tokenId), "Startup does not exist");
         require(startups[tokenId].isValidated, "Startup not validated");
+        require(newValuation > 0, "Invalid valuation");
+        
+        uint256 oldValuation = startups[tokenId].valuation;
         startups[tokenId].valuation = newValuation;
+        emit ValuationUpdated(tokenId, oldValuation, newValuation);
+    }
+
+    function getStartupValuation(uint256 tokenId) external view returns (uint256) {
+        require(_exists(tokenId), "Startup does not exist");
+        return startups[tokenId].valuation;
     }
 
     function getStartupDetails(uint256 tokenId) external view returns (Startup memory) {
+        require(_exists(tokenId), "Startup does not exist");
         return startups[tokenId];
     }
 
@@ -97,6 +113,7 @@ contract EquityNFTFactory is ERC721, Ownable {
     }
 
     function issueShares(uint256 tokenId, address to, uint256 shares) external {
+        require(_exists(tokenId), "Startup does not exist");
         require(msg.sender == startups[tokenId].founder || trustedIssuers[msg.sender], 
             "Only founder or trusted issuer can issue shares");
         require(shares <= startups[tokenId].availableShares, "Not enough available shares");

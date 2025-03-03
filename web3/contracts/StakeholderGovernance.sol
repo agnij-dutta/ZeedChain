@@ -73,14 +73,12 @@ contract StakeholderGovernance is ReentrancyGuard {
         Proposal storage proposal = proposals[proposalId];
         require(block.timestamp >= proposal.deadline, "Voting period not ended");
         require(!proposal.executed, "Already executed");
+        require(proposal.votesFor > proposal.votesAgainst, "Proposal not approved");
 
         proposal.executed = true;
-        bool passed = proposal.votesFor > proposal.votesAgainst;
 
-        if (passed) {
-            // Implementation for executing the proposal would go here
-            // This could involve calls to other contracts based on the proposal type
-        }
+        // Implementation for executing the proposal would go here
+        // This could involve calls to other contracts based on the proposal type
 
         emit ProposalExecuted(proposalId);
     }

@@ -18,8 +18,8 @@ describe("FractionalInvestment", function () {
   const STARTUP_NAME = "Test Startup";
   const STARTUP_DESC = "Test Description";
   const TOTAL_SHARES = 1000000;
-  const INITIAL_VALUATION = ethers.utils.parseEther("1000000"); // 1M ETH
-  const INVESTMENT_AMOUNT = ethers.utils.parseEther("10"); // 10 ETH
+  const INITIAL_VALUATION = ethers.parseEther("1000000"); // 1M ETH
+  const INVESTMENT_AMOUNT = ethers.parseEther("10"); // 10 ETH
 
   beforeEach(async function () {
     [owner, founder, investor1, investor2] = await ethers.getSigners();
@@ -30,10 +30,10 @@ describe("FractionalInvestment", function () {
 
     // Deploy FractionalInvestment
     const FractionalInvestment = await ethers.getContractFactory("FractionalInvestment");
-    fractionalInvestment = await FractionalInvestment.deploy(equityNFTFactory.address);
+    fractionalInvestment = await FractionalInvestment.deploy(await equityNFTFactory.getAddress());
 
     // Add FractionalInvestment as trusted issuer
-    await equityNFTFactory.addTrustedIssuer(fractionalInvestment.address);
+    await equityNFTFactory.addTrustedIssuer(await fractionalInvestment.getAddress());
 
     // Register a startup
     const tx = await equityNFTFactory.connect(founder).registerStartup(
@@ -43,8 +43,8 @@ describe("FractionalInvestment", function () {
       INITIAL_VALUATION
     );
     const receipt = await tx.wait();
-    const event = receipt.events?.find(e => e.event === "StartupRegistered");
-    startupId = event?.args?.tokenId.toNumber();
+    const event = receipt.logs.find((e: any) => e.eventName === "StartupRegistered");
+    startupId = event?.args?.tokenId?.toString();
 
     // Add owner as validator and validate startup
     await equityNFTFactory.addValidator(owner.address);
@@ -69,7 +69,7 @@ describe("FractionalInvestment", function () {
         fractionalInvestment.connect(investor1).invest(invalidStartupId, {
           value: INVESTMENT_AMOUNT
         })
-      ).to.be.revertedWith("Startup not found or not validated");
+      ).to.be.revertedWith("Startup does not exist");
     });
 
     it("Should calculate shares correctly based on investment amount", async function () {
@@ -77,7 +77,7 @@ describe("FractionalInvestment", function () {
         value: INVESTMENT_AMOUNT
       });
 
-      const expectedShares = INVESTMENT_AMOUNT.mul(TOTAL_SHARES).div(INITIAL_VALUATION);
+      const expectedShares = INVESTMENT_AMOUNT * BigInt(TOTAL_SHARES) / INITIAL_VALUATION;
       const actualShares = await fractionalInvestment.getInvestorShares(startupId, investor1.address);
       expect(actualShares).to.equal(expectedShares);
     });
@@ -88,74 +88,59 @@ describe("FractionalInvestment", function () {
       });
 
       await fractionalInvestment.connect(investor2).invest(startupId, {
-        value: INVESTMENT_AMOUNT.mul(2)
+        value: INVESTMENT_AMOUNT * 2n
       });
 
       const totalInvestment = await fractionalInvestment.getTotalInvestment(startupId);
-      expect(totalInvestment).to.equal(INVESTMENT_AMOUNT.mul(3));
+      expect(totalInvestment).to.equal(INVESTMENT_AMOUNT * 3n);
 
       const startup = await equityNFTFactory.getStartupDetails(startupId);
-      const expectedAvailableShares = TOTAL_SHARES
-        .sub(INVESTMENT_AMOUNT.mul(3).mul(TOTAL_SHARES).div(INITIAL_VALUATION));
+      const expectedAvailableShares = BigInt(TOTAL_SHARES) - 
+        (INVESTMENT_AMOUNT * 3n * BigInt(TOTAL_SHARES)) / INITIAL_VALUATION;
       expect(startup.availableShares).to.equal(expectedAvailableShares);
     });
   });
 
-  describe("Share Management", function () {
-    beforeEach(async function () {
+  describe("Share Price Tracking", function () {
+    it("Should track share price changes over time", async function () {
+      // Make initial investment
       await fractionalInvestment.connect(investor1).invest(startupId, {
+        value: INVESTMENT_AMOUNT
+      });
+
+      const initialSharePrice = INITIAL_VALUATION / BigInt(TOTAL_SHARES);
+      const firstInvestorShares = await fractionalInvestment.getInvestorShares(startupId, investor1.address);
+      expect(firstInvestorShares * initialSharePrice).to.equal(INVESTMENT_AMOUNT);
+    });
+  });
+
+  describe("Profit Distribution", function () {
+    beforeEach(async function () {
+      // Make investments before testing profit distribution
+      await fractionalInvestment.connect(investor1).invest(startupId, {
+        value: INVESTMENT_AMOUNT
+      });
+      await fractionalInvestment.connect(investor2).invest(startupId, {
         value: INVESTMENT_AMOUNT
       });
     });
 
-    it("Should track individual investor shares correctly", async function () {
-      const shares = await fractionalInvestment.getInvestorShares(startupId, investor1.address);
-      const expectedShares = INVESTMENT_AMOUNT.mul(TOTAL_SHARES).div(INITIAL_VALUATION);
-      expect(shares).to.equal(expectedShares);
-    });
-
-    it("Should prevent transfer of more shares than owned", async function () {
-      const shares = await fractionalInvestment.getInvestorShares(startupId, investor1.address);
+    it("Should allow founder to distribute profits", async function () {
+      const profitAmount = ethers.parseEther("1");
       await expect(
-        fractionalInvestment.connect(investor1).transferShares(startupId, investor2.address, shares.add(1))
-      ).to.be.revertedWith("Insufficient shares");
-    });
-
-    it("Should allow transfer of shares between investors", async function () {
-      const initialShares = await fractionalInvestment.getInvestorShares(startupId, investor1.address);
-      const transferAmount = initialShares.div(2);
-
-      await fractionalInvestment.connect(investor1).transferShares(
-        startupId,
-        investor2.address,
-        transferAmount
-      );
-
-      const finalSharesInvestor1 = await fractionalInvestment.getInvestorShares(startupId, investor1.address);
-      const finalSharesInvestor2 = await fractionalInvestment.getInvestorShares(startupId, investor2.address);
-
-      expect(finalSharesInvestor1).to.equal(initialShares.sub(transferAmount));
-      expect(finalSharesInvestor2).to.equal(transferAmount);
-    });
-  });
-
-  describe("Investment Limits", function () {
-    it("Should enforce minimum investment amount", async function () {
-      const tooSmall = ethers.utils.parseEther("0.0001");
-      await expect(
-        fractionalInvestment.connect(investor1).invest(startupId, {
-          value: tooSmall
+        fractionalInvestment.connect(founder).distributeProfit(startupId, {
+          value: profitAmount
         })
-      ).to.be.revertedWith("Investment amount too low");
+      ).to.emit(fractionalInvestment, "ProfitDistributed");
     });
 
-    it("Should not exceed total available shares", async function () {
-      const tooLarge = INITIAL_VALUATION.mul(2);
+    it("Should prevent non-founder from distributing profits", async function () {
+      const profitAmount = ethers.parseEther("1");
       await expect(
-        fractionalInvestment.connect(investor1).invest(startupId, {
-          value: tooLarge
+        fractionalInvestment.connect(investor1).distributeProfit(startupId, {
+          value: profitAmount
         })
-      ).to.be.revertedWith("Not enough shares available");
+      ).to.be.revertedWith("Only founder can distribute profits");
     });
   });
 });

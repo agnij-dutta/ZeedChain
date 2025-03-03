@@ -7,7 +7,9 @@ import "hardhat-gas-reporter";
 import "solidity-coverage";
 import * as dotenv from "dotenv";
 
-dotenv.config();
+dotenv.config({ path: __dirname + "/.env" });
+const ACCOUNT_PRIVATE_KEY = process.env.ACCOUNT_PRIVATE_KEY || "";
+console.log("PrivateKey set:", !!ACCOUNT_PRIVATE_KEY);
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -26,23 +28,10 @@ const config: HardhatUserConfig = {
     localhost: {
       url: "http://127.0.0.1:8545",
     },
-    sepolia: {
-      url: process.env.SEPOLIA_URL || "",
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-    },
-    local: {
-      url: "http://127.0.0.1:8545/",
-      chainId: 31337,
-    },
     opencampus: {
-      url: "https://rpc.open-campus-codex.gelato.digital",
+      url: `https://rpc.open-campus-codex.gelato.digital/`,
+      accounts: [ACCOUNT_PRIVATE_KEY],
       chainId: 656476,
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-    },
-    arbitrumSepolia: {
-      url: "https://sepolia-rollup.arbitrum.io/rpc",
-      chainId: 421614,
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
     }
   },
   gasReporter: {
@@ -50,7 +39,19 @@ const config: HardhatUserConfig = {
     currency: "USD",
   },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY,
+    apiKey: {
+      opencampus: "xxx"
+    },
+    customChains: [
+      {
+        network: "opencampus",
+        chainId: 656476,
+        urls: {
+          apiURL: "https://opencampus-codex.blockscout.com/api",
+          browserURL: "https://opencampus-codex.blockscout.com",
+        },
+      },
+    ],
   },
   paths: {
     sources: "./contracts",
