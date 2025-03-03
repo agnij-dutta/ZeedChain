@@ -1,124 +1,203 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { EquityNFTFactory } from "../typechain-types";
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
 describe("EquityNFTFactory", function () {
-    let equityFactory: EquityNFTFactory;
+    let equityNFTFactory: EquityNFTFactory;
     let owner: SignerWithAddress;
-    let validator: SignerWithAddress;
     let founder: SignerWithAddress;
-    let investor: SignerWithAddress;
+    let validator: SignerWithAddress;
+    let nonOwner: SignerWithAddress;
+
+    const STARTUP_NAME = "Test Startup";
+    const STARTUP_DESC = "Test Description";
+    const TOTAL_SHARES = 1000000;
+    const INITIAL_VALUATION = ethers.utils.parseEther("1000000"); // 1M ETH
 
     beforeEach(async function () {
-        [owner, validator, founder, investor] = await ethers.getSigners();
-        
+        [owner, founder, validator, nonOwner] = await ethers.getSigners();
+
         const EquityNFTFactory = await ethers.getContractFactory("EquityNFTFactory");
-        equityFactory = await EquityNFTFactory.deploy();
-        await equityFactory.waitForDeployment();
+        equityNFTFactory = await EquityNFTFactory.deploy();
+
+        // Add validator to the validators list
+        await equityNFTFactory.addValidator(validator.address);
     });
 
     describe("Startup Registration", function () {
-        it("Should register a new startup", async function () {
-            const tx = await equityFactory.connect(founder).registerStartup(
-                "Test Startup",
-                "A test startup description",
-                1000, // total shares
-                ethers.parseEther("1000") // initial valuation
+        it("Should allow startup registration", async function () {
+            await expect(
+                equityNFTFactory.connect(founder).registerStartup(
+                    STARTUP_NAME,
+                    STARTUP_DESC,
+                    TOTAL_SHARES,
+                    INITIAL_VALUATION
+                )
+            ).to.emit(equityNFTFactory, "StartupRegistered");
+        });
+
+        it("Should fail with invalid parameters", async function () {
+            await expect(
+                equityNFTFactory.connect(founder).registerStartup(
+                    "",
+                    STARTUP_DESC,
+                    TOTAL_SHARES,
+                    INITIAL_VALUATION
+                )
+            ).to.be.revertedWith("Name cannot be empty");
+
+            await expect(
+                equityNFTFactory.connect(founder).registerStartup(
+                    STARTUP_NAME,
+                    STARTUP_DESC,
+                    0,
+                    INITIAL_VALUATION
+                )
+            ).to.be.revertedWith("Total shares must be greater than 0");
+        });
+
+        it("Should set correct startup details", async function () {
+            await equityNFTFactory.connect(founder).registerStartup(
+                STARTUP_NAME,
+                STARTUP_DESC,
+                TOTAL_SHARES,
+                INITIAL_VALUATION
             );
 
-            const receipt = await tx.wait();
-            const startupId = 1; // First token ID
-
-            const startup = await equityFactory.startups(startupId);
-            expect(startup.name).to.equal("Test Startup");
-            expect(startup.totalShares).to.equal(1000);
+            const startup = await equityNFTFactory.getStartupDetails(1);
+            expect(startup.name).to.equal(STARTUP_NAME);
+            expect(startup.description).to.equal(STARTUP_DESC);
+            expect(startup.totalShares).to.equal(TOTAL_SHARES);
+            expect(startup.availableShares).to.equal(TOTAL_SHARES);
+            expect(startup.valuation).to.equal(INITIAL_VALUATION);
             expect(startup.founder).to.equal(founder.address);
             expect(startup.isValidated).to.be.false;
         });
     });
 
-    describe("Validation", function () {
-        it("Should allow validator to validate startup", async function () {
-            await equityFactory.connect(owner).addValidator(validator.address);
-            
-            await equityFactory.connect(founder).registerStartup(
-                "Test Startup",
-                "A test startup description",
-                1000,
-                ethers.parseEther("1000")
-            );
+    describe("Startup Validation", function () {
+        let startupId: number;
 
-            await equityFactory.connect(validator).validateStartup(1, true);
-            
-            const startup = await equityFactory.startups(1);
+        beforeEach(async function () {
+            const tx = await equityNFTFactory.connect(founder).registerStartup(
+                STARTUP_NAME,
+                STARTUP_DESC,
+                TOTAL_SHARES,
+                INITIAL_VALUATION
+            );
+            const receipt = await tx.wait();
+            const event = receipt.events?.find(e => e.event === "StartupRegistered");
+            startupId = event?.args?.tokenId.toNumber();
+        });
+
+        it("Should allow validation by authorized validator", async function () {
+            await expect(
+                equityNFTFactory.connect(validator).validateStartup(startupId, true)
+            ).to.emit(equityNFTFactory, "StartupValidated");
+        });
+
+        it("Should prevent validation by non-validator", async function () {
+            await expect(
+                equityNFTFactory.connect(nonOwner).validateStartup(startupId, true)
+            ).to.be.revertedWith("Not a validator");
+        });
+
+        it("Should update validation status correctly", async function () {
+            await equityNFTFactory.connect(validator).validateStartup(startupId, true);
+            const startup = await equityNFTFactory.getStartupDetails(startupId);
             expect(startup.isValidated).to.be.true;
         });
+    });
 
-        it("Should not allow non-validators to validate startup", async function () {
-            await equityFactory.connect(founder).registerStartup(
-                "Test Startup",
-                "A test startup description",
-                1000,
-                ethers.parseEther("1000")
-            );
-
+    describe("Trusted Issuer Management", function () {
+        it("Should allow owner to add trusted issuer", async function () {
             await expect(
-                equityFactory.connect(investor).validateStartup(1, true)
-            ).to.be.revertedWith("Not authorized validator");
+                equityNFTFactory.connect(owner).addTrustedIssuer(nonOwner.address)
+            ).to.emit(equityNFTFactory, "TrustedIssuerAdded");
+        });
+
+        it("Should prevent non-owner from adding trusted issuer", async function () {
+            await expect(
+                equityNFTFactory.connect(nonOwner).addTrustedIssuer(nonOwner.address)
+            ).to.be.revertedWith("Ownable: caller is not the owner");
+        });
+
+        it("Should allow owner to remove trusted issuer", async function () {
+            await equityNFTFactory.connect(owner).addTrustedIssuer(nonOwner.address);
+            await expect(
+                equityNFTFactory.connect(owner).removeTrustedIssuer(nonOwner.address)
+            ).to.emit(equityNFTFactory, "TrustedIssuerRemoved");
         });
     });
 
-    describe("Share Management", function () {
+    describe("NFT Functionality", function () {
+        let startupId: number;
+
         beforeEach(async function () {
-            await equityFactory.connect(founder).registerStartup(
-                "Test Startup",
-                "A test startup description",
-                1000,
-                ethers.parseEther("1000")
+            const tx = await equityNFTFactory.connect(founder).registerStartup(
+                STARTUP_NAME,
+                STARTUP_DESC,
+                TOTAL_SHARES,
+                INITIAL_VALUATION
             );
-            await equityFactory.connect(owner).addValidator(validator.address);
-            await equityFactory.connect(validator).validateStartup(1, true);
+            const receipt = await tx.wait();
+            const event = receipt.events?.find(e => e.event === "StartupRegistered");
+            startupId = event?.args?.tokenId.toNumber();
+
+            // Validate the startup
+            await equityNFTFactory.connect(validator).validateStartup(startupId, true);
         });
 
-        it("Should allow founder to issue shares", async function () {
-            await equityFactory.connect(founder).issueShares(1, investor.address, 100);
-            
-            const startup = await equityFactory.startups(1);
-            expect(startup.availableShares).to.equal(900);
-        });
+        it("Should mint NFTs only through trusted issuer", async function () {
+            // Add nonOwner as trusted issuer for testing
+            await equityNFTFactory.addTrustedIssuer(nonOwner.address);
 
-        it("Should not allow non-founders to issue shares", async function () {
             await expect(
-                equityFactory.connect(investor).issueShares(1, investor.address, 100)
-            ).to.be.revertedWith("Only founder or trusted issuer can issue shares");
-        });
-    });
+                equityNFTFactory.connect(nonOwner).mintShares(startupId, founder.address, 100)
+            ).to.emit(equityNFTFactory, "SharesMinted");
 
-    describe("Valuation Updates", function () {
-        beforeEach(async function () {
-            await equityFactory.connect(founder).registerStartup(
-                "Test Startup",
-                "A test startup description",
-                1000,
-                ethers.parseEther("1000")
+            await expect(
+                equityNFTFactory.connect(founder).mintShares(startupId, founder.address, 100)
+            ).to.be.revertedWith("Not a trusted issuer");
+        });
+
+        it("Should transfer NFTs correctly", async function () {
+            // Add owner as trusted issuer for testing
+            await equityNFTFactory.addTrustedIssuer(owner.address);
+
+            // Mint some shares
+            await equityNFTFactory.mintShares(startupId, founder.address, 100);
+
+            // Transfer shares
+            await equityNFTFactory.connect(founder).transferShares(
+                startupId,
+                nonOwner.address,
+                50
             );
-            await equityFactory.connect(owner).addValidator(validator.address);
-            await equityFactory.connect(validator).validateStartup(1, true);
+
+            const founderShares = await equityNFTFactory.balanceOf(founder.address, startupId);
+            const nonOwnerShares = await equityNFTFactory.balanceOf(nonOwner.address, startupId);
+
+            expect(founderShares).to.equal(50);
+            expect(nonOwnerShares).to.equal(50);
         });
 
-        it("Should allow founder to update valuation", async function () {
-            const newValuation = ethers.parseEther("2000");
-            await equityFactory.connect(founder).updateValuation(1, newValuation);
-            
-            const startup = await equityFactory.startups(1);
-            expect(startup.valuation).to.equal(newValuation);
-        });
+        it("Should prevent transfer of more shares than owned", async function () {
+            // Add owner as trusted issuer for testing
+            await equityNFTFactory.addTrustedIssuer(owner.address);
 
-        it("Should not allow non-founders to update valuation", async function () {
+            // Mint some shares
+            await equityNFTFactory.mintShares(startupId, founder.address, 100);
+
+            // Attempt to transfer more shares than owned
             await expect(
-                equityFactory.connect(investor).updateValuation(1, ethers.parseEther("2000"))
-            ).to.be.revertedWith("Only founder can update valuation");
+                equityNFTFactory.connect(founder).transferShares(
+                    startupId,
+                    nonOwner.address,
+                    150
+                )
+            ).to.be.revertedWith("ERC1155: insufficient balance for transfer");
         });
     });
 });

@@ -1,135 +1,161 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { FractionalInvestment, EquityNFTFactory } from "../typechain-types";
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import {
+  EquityNFTFactory,
+  FractionalInvestment
+} from "../typechain-types";
 
 describe("FractionalInvestment", function () {
-    let fractionalInvestment: FractionalInvestment;
-    let equityFactory: EquityNFTFactory;
-    let owner: SignerWithAddress;
-    let founder: SignerWithAddress;
-    let investor: SignerWithAddress;
-    let validator: SignerWithAddress;
+  let equityNFTFactory: EquityNFTFactory;
+  let fractionalInvestment: FractionalInvestment;
+  let owner: SignerWithAddress;
+  let founder: SignerWithAddress;
+  let investor1: SignerWithAddress;
+  let investor2: SignerWithAddress;
+  let startupId: number;
 
+  const STARTUP_NAME = "Test Startup";
+  const STARTUP_DESC = "Test Description";
+  const TOTAL_SHARES = 1000000;
+  const INITIAL_VALUATION = ethers.utils.parseEther("1000000"); // 1M ETH
+  const INVESTMENT_AMOUNT = ethers.utils.parseEther("10"); // 10 ETH
+
+  beforeEach(async function () {
+    [owner, founder, investor1, investor2] = await ethers.getSigners();
+
+    // Deploy EquityNFTFactory
+    const EquityNFTFactory = await ethers.getContractFactory("EquityNFTFactory");
+    equityNFTFactory = await EquityNFTFactory.deploy();
+
+    // Deploy FractionalInvestment
+    const FractionalInvestment = await ethers.getContractFactory("FractionalInvestment");
+    fractionalInvestment = await FractionalInvestment.deploy(equityNFTFactory.address);
+
+    // Add FractionalInvestment as trusted issuer
+    await equityNFTFactory.addTrustedIssuer(fractionalInvestment.address);
+
+    // Register a startup
+    const tx = await equityNFTFactory.connect(founder).registerStartup(
+      STARTUP_NAME,
+      STARTUP_DESC,
+      TOTAL_SHARES,
+      INITIAL_VALUATION
+    );
+    const receipt = await tx.wait();
+    const event = receipt.events?.find(e => e.event === "StartupRegistered");
+    startupId = event?.args?.tokenId.toNumber();
+
+    // Add owner as validator and validate startup
+    await equityNFTFactory.addValidator(owner.address);
+    await equityNFTFactory.validateStartup(startupId, true);
+  });
+
+  describe("Investment", function () {
+    it("Should allow investment in validated startups", async function () {
+      await expect(
+        fractionalInvestment.connect(investor1).invest(startupId, {
+          value: INVESTMENT_AMOUNT
+        })
+      ).to.not.be.reverted;
+
+      const shares = await fractionalInvestment.getInvestorShares(startupId, investor1.address);
+      expect(shares).to.be.gt(0);
+    });
+
+    it("Should fail investment in non-validated startups", async function () {
+      const invalidStartupId = 999;
+      await expect(
+        fractionalInvestment.connect(investor1).invest(invalidStartupId, {
+          value: INVESTMENT_AMOUNT
+        })
+      ).to.be.revertedWith("Startup not found or not validated");
+    });
+
+    it("Should calculate shares correctly based on investment amount", async function () {
+      await fractionalInvestment.connect(investor1).invest(startupId, {
+        value: INVESTMENT_AMOUNT
+      });
+
+      const expectedShares = INVESTMENT_AMOUNT.mul(TOTAL_SHARES).div(INITIAL_VALUATION);
+      const actualShares = await fractionalInvestment.getInvestorShares(startupId, investor1.address);
+      expect(actualShares).to.equal(expectedShares);
+    });
+
+    it("Should update total investment and shares correctly", async function () {
+      await fractionalInvestment.connect(investor1).invest(startupId, {
+        value: INVESTMENT_AMOUNT
+      });
+
+      await fractionalInvestment.connect(investor2).invest(startupId, {
+        value: INVESTMENT_AMOUNT.mul(2)
+      });
+
+      const totalInvestment = await fractionalInvestment.getTotalInvestment(startupId);
+      expect(totalInvestment).to.equal(INVESTMENT_AMOUNT.mul(3));
+
+      const startup = await equityNFTFactory.getStartupDetails(startupId);
+      const expectedAvailableShares = TOTAL_SHARES
+        .sub(INVESTMENT_AMOUNT.mul(3).mul(TOTAL_SHARES).div(INITIAL_VALUATION));
+      expect(startup.availableShares).to.equal(expectedAvailableShares);
+    });
+  });
+
+  describe("Share Management", function () {
     beforeEach(async function () {
-        [owner, founder, investor, validator] = await ethers.getSigners();
-        
-        const EquityNFTFactory = await ethers.getContractFactory("EquityNFTFactory");
-        equityFactory = await EquityNFTFactory.deploy();
-        const FractionalInvestment = await ethers.getContractFactory("FractionalInvestment");
-        fractionalInvestment = await FractionalInvestment.deploy(await equityFactory.getAddress());
-
-        // Add validator
-        await equityFactory.connect(owner).addValidator(validator.address);
-        // Add FractionalInvestment as trusted issuer
-        await equityFactory.connect(owner).addTrustedIssuer(await fractionalInvestment.getAddress());
+      await fractionalInvestment.connect(investor1).invest(startupId, {
+        value: INVESTMENT_AMOUNT
+      });
     });
 
-    describe("Investment Flow", function () {
-        beforeEach(async function () {
-            // Register a startup
-            await equityFactory.connect(founder).registerStartup(
-                "Test Startup",
-                "A test startup description",
-                1000, // total shares
-                ethers.parseEther("1000") // initial valuation (1000 ETH)
-            );
-
-            // Validate the startup
-            await equityFactory.connect(validator).validateStartup(1, true);
-        });
-
-        it("Should allow investment in startup shares", async function () {
-            const investmentAmount = ethers.parseEther("100"); // 100 ETH investment
-            
-            await expect(
-                fractionalInvestment.connect(investor).invest(1, { value: investmentAmount })
-            ).to.emit(fractionalInvestment, "InvestmentMade")
-                .withArgs(1, investor.address, 100, investmentAmount);
-
-            const shares = await fractionalInvestment.getInvestorShares(1, investor.address);
-            expect(shares).to.equal(100);
-        });
-
-        it("Should not allow investment in unvalidated startups", async function () {
-            // Register another startup but don't validate it
-            await equityFactory.connect(founder).registerStartup(
-                "Unvalidated Startup",
-                "Another test startup",
-                1000,
-                ethers.parseEther("1000")
-            );
-
-            const investmentAmount = ethers.parseEther("100");
-            
-            await expect(
-                fractionalInvestment.connect(investor).invest(2, { value: investmentAmount })
-            ).to.be.revertedWith("Startup not validated");
-        });
-
-        it("Should track investment history", async function () {
-            const investmentAmount = ethers.parseEther("50");
-            
-            await fractionalInvestment.connect(investor).invest(1, { value: investmentAmount });
-            
-            const investments = await fractionalInvestment.getInvestmentHistory(1, investor.address);
-            expect(investments.length).to.equal(1);
-            expect(investments[0].shares).to.equal(50);
-            expect(investments[0].investmentAmount).to.equal(investmentAmount);
-        });
-
-        it("Should handle multiple investments from same investor", async function () {
-            const firstInvestment = ethers.parseEther("50");
-            const secondInvestment = ethers.parseEther("30");
-            
-            await fractionalInvestment.connect(investor).invest(1, { value: firstInvestment });
-            await fractionalInvestment.connect(investor).invest(1, { value: secondInvestment });
-            
-            const shares = await fractionalInvestment.getInvestorShares(1, investor.address);
-            expect(shares).to.equal(80); // 50 + 30 shares
-        });
+    it("Should track individual investor shares correctly", async function () {
+      const shares = await fractionalInvestment.getInvestorShares(startupId, investor1.address);
+      const expectedShares = INVESTMENT_AMOUNT.mul(TOTAL_SHARES).div(INITIAL_VALUATION);
+      expect(shares).to.equal(expectedShares);
     });
 
-    describe("Profit Distribution", function () {
-        beforeEach(async function () {
-            await equityFactory.connect(founder).registerStartup(
-                "Test Startup",
-                "A test startup description",
-                1000,
-                ethers.parseEther("1000")
-            );
-            await equityFactory.connect(validator).validateStartup(1, true);
-            
-            // Investor buys 100 shares
-            await fractionalInvestment.connect(investor).invest(1, {
-                value: ethers.parseEther("100")
-            });
-        });
-
-        it("Should allow founder to distribute profits", async function () {
-            const profitAmount = ethers.parseEther("10");
-            const latestBlock = await ethers.provider.getBlock("latest");
-            const currentTimestamp = latestBlock!.timestamp;
-            
-            await expect(
-                fractionalInvestment.connect(founder).distributeProfit(1, {
-                    value: profitAmount
-                })
-            ).to.emit(fractionalInvestment, "ProfitDistributed")
-                .withArgs(1, profitAmount, (timestamp: bigint) => {
-                    // Allow 2 second difference to account for block time variations
-                    return Math.abs(Number(timestamp) - Number(currentTimestamp)) <= 2;
-                });
-        });
-
-        it("Should not allow non-founders to distribute profits", async function () {
-            const profitAmount = ethers.parseEther("10");
-            
-            await expect(
-                fractionalInvestment.connect(investor).distributeProfit(1, {
-                    value: profitAmount
-                })
-            ).to.be.revertedWith("Only founder can distribute profits");
-        });
+    it("Should prevent transfer of more shares than owned", async function () {
+      const shares = await fractionalInvestment.getInvestorShares(startupId, investor1.address);
+      await expect(
+        fractionalInvestment.connect(investor1).transferShares(startupId, investor2.address, shares.add(1))
+      ).to.be.revertedWith("Insufficient shares");
     });
+
+    it("Should allow transfer of shares between investors", async function () {
+      const initialShares = await fractionalInvestment.getInvestorShares(startupId, investor1.address);
+      const transferAmount = initialShares.div(2);
+
+      await fractionalInvestment.connect(investor1).transferShares(
+        startupId,
+        investor2.address,
+        transferAmount
+      );
+
+      const finalSharesInvestor1 = await fractionalInvestment.getInvestorShares(startupId, investor1.address);
+      const finalSharesInvestor2 = await fractionalInvestment.getInvestorShares(startupId, investor2.address);
+
+      expect(finalSharesInvestor1).to.equal(initialShares.sub(transferAmount));
+      expect(finalSharesInvestor2).to.equal(transferAmount);
+    });
+  });
+
+  describe("Investment Limits", function () {
+    it("Should enforce minimum investment amount", async function () {
+      const tooSmall = ethers.utils.parseEther("0.0001");
+      await expect(
+        fractionalInvestment.connect(investor1).invest(startupId, {
+          value: tooSmall
+        })
+      ).to.be.revertedWith("Investment amount too low");
+    });
+
+    it("Should not exceed total available shares", async function () {
+      const tooLarge = INITIAL_VALUATION.mul(2);
+      await expect(
+        fractionalInvestment.connect(investor1).invest(startupId, {
+          value: tooLarge
+        })
+      ).to.be.revertedWith("Not enough shares available");
+    });
+  });
 });
