@@ -1,5 +1,7 @@
+"use client"
 import React from 'react'
 import { Input } from '@/components/ui/input'
+import data from './_data'
 import {
     Card,
     CardContent,
@@ -8,14 +10,28 @@ import {
     CardHeader,
     CardTitle,
   } from "@/components/ui/card" 
+import StartupCard from '@/components/ui/startupcard'
 const Explore = () => {
+  const [search, setSearch] = React.useState('')
+  const filteredData = data.filter(startup => 
+    startup.startup_name.toLowerCase().includes(search.toLowerCase())
+  )
+
   return (
-    <div className="grid grid-cols-4 gap-4">
-      <div className='border'>Item 1</div>
-      <div className=''>Item 2</div>
-      <div className=''>Item 3</div>
-      <div className=''>Item 4</div>
-    </div>
+    <div className='flex flex-col items-center justify-center p-10 w-full'>
+        <Input
+        className="my-5"
+        type="search"
+        placeholder="Search Startups..."
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+      />
+    <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3 w-full">
+
+      { filteredData.map((startup) => (
+        <StartupCard key={startup.startup_name} startup={startup} />
+      ))}
+    </div></div>
   )
 }
 

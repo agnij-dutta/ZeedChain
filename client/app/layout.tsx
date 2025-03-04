@@ -31,6 +31,7 @@ export default function RootLayout({
       <head>
         <title>ZeedChain - Startup Equity NFT Platform</title>
         <meta name="description" content="Decentralized platform for startup equity NFTs" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       </head>
       <body className={`${inter.className} dark`}>
       {children}
