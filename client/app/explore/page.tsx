@@ -18,9 +18,9 @@ const Explore = () => {
   )
 
   return (
-    <div className='flex flex-col items-center justify-center p-10 w-full'>
+    <div className='flex flex-col items-center justify-center px-10 pt-8 pb-10 w-full'>
         <Input
-        className="my-5"
+        className="mb-5"
         type="search"
         placeholder="Search Startups..."
         value={search}
