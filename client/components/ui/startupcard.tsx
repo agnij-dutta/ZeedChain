@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { useRouter } from 'next/navigation';
 
 // Sample startup data
 const startupData = {
@@ -17,8 +18,13 @@ const startupData = {
 };
 
 const StartupCard = ({ startup = startupData }) => {
+  const router = useRouter();
+  const handleClick = () => {
+    router.push(`/explore/${startup.startup_name}`);
+  };
   return (
-    <Card className="w-full max-w-2xl mx-auto shadow-lg rounded-sm p-2">
+    <Card className="w-full max-w-2xl mx-auto shadow-lg rounded-sm p-2 cursor-pointer hover:shadow-xl transition-shadow duration-200"
+    onClick={handleClick}>
       <CardHeader className="flex flex-row items-center space-x-4 pb-2">
         <img 
           src={startup.logo_url} 

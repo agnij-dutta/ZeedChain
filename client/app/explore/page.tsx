@@ -10,6 +10,7 @@ import {
     CardHeader,
     CardTitle,
   } from "@/components/ui/card" 
+  import Link from 'next/link'
 import StartupCard from '@/components/ui/startupcard'
 const Explore = () => {
   const [search, setSearch] = React.useState('')
