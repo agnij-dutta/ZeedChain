@@ -3,19 +3,36 @@
 import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { Check, ChevronDown, Menu, Share2, Star, Volume2, X } from "lucide-react"
+import { Check, Menu, Share2, Star, Volume2, X, Coins, TrendingUp, ArrowRight } from "lucide-react"
 import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { Slider } from "@/components/ui/slider"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { motion, AnimatePresence } from "framer-motion"
 
 export default function StartupProfile() {
-    const params = useParams()
+  const params = useParams()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isInvestModalOpen, setIsInvestModalOpen] = useState(false)
+  const [investment, setInvestment] = useState(0.5)
+  const [estimatedShares, setEstimatedShares] = useState(50)
+
+  // Calculate estimated shares based on investment amount
+  const handleInvestmentChange = (value: number[]) => {
+    setInvestment(value[0])
+    setEstimatedShares(Math.round(value[0] * 100))
+  }
+
+  const handleInvest = () => {
+    // In a real app, this would trigger the crypto transaction
+    alert(`Investment of ${investment} ETH confirmed for NexaTech`)
+    setIsInvestModalOpen(false)
+  }
 
   return (
     <div className="min-h-screen bg-[#0a0a0e] text-gray-100">
-     
       {/* Mobile menu */}
       {isMenuOpen && (
         <div className="fixed inset-0 z-50 bg-black/90 md:hidden">
@@ -48,6 +65,110 @@ export default function StartupProfile() {
         </div>
       )}
 
+      {/* Investment Modal */}
+      <AnimatePresence>
+        {isInvestModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="w-full max-w-md p-4"
+            >
+              <Card className="border border-[#1a1a1e] bg-gradient-to-br from-[#151518] to-[#0a0a0e] text-gray-100 shadow-xl">
+                <CardHeader className="relative border-b border-[#1a1a1e] pb-4">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setIsInvestModalOpen(false)}
+                    className="absolute right-4 top-4 text-gray-400 hover:text-gray-100 hover:bg-[#1a1a1e]"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                  <Badge className="w-fit bg-gradient-to-r from-blue-600 to-blue-500 text-white mb-2">
+                    Crypto Investment
+                  </Badge>
+                  <CardTitle className="text-2xl tracking-tight">{params.project}</CardTitle>
+                  <CardDescription className="text-gray-400 mt-1">
+                    AI-powered workflow automation and optimization for enterprises
+                  </CardDescription>
+                </CardHeader>
+
+                <CardContent className="pt-6 space-y-6">
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-lg font-medium">Investment Amount</h3>
+                      <div className="flex items-center gap-1.5 text-xl">
+                        <Coins className="h-5 w-5 text-blue-400" />
+                        <span className="text-blue-400">{investment} ETH</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 pb-6">
+                      <Slider
+                        defaultValue={[0.5]}
+                        max={5}
+                        min={0.1}
+                        step={0.1}
+                        value={[investment]}
+                        onValueChange={handleInvestmentChange}
+                        className="py-4"
+                      />
+                      <div className="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>Min: 0.1 ETH</span>
+                        <span>Max: 5 ETH</span>
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg border border-[#1a1a1e] bg-[#151518] p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <h4 className="text-sm font-medium text-gray-300 flex items-center gap-1.5">
+                          <TrendingUp className="h-4 w-4 text-blue-400" />
+                          Estimated Shares
+                        </h4>
+                        <span className="text-lg text-blue-400">{estimatedShares}</span>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Shares represent your ownership stake in the project. Value may fluctuate based on project
+                        performance.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+
+                <CardFooter className="flex flex-col space-y-4 pt-2">
+                  <Button onClick={handleInvest} className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white">
+                    Confirm Investment
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+
+                  <div className="flex items-start gap-2 text-xs text-gray-500 mt-2">
+                    <svg
+                      className="h-4 w-4 text-yellow-500 flex-shrink-0 mt-0.5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                      />
+                    </svg>
+                    <p>
+                      Cryptocurrency investments involve significant risk and may not be suitable for all investors.
+                      Past performance is not indicative of future results.
+                    </p>
+                  </div>
+                </CardFooter>
+              </Card>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Breadcrumb */}
       <div className="px-4 py-3 text-sm text-gray-500 md:px-8 lg:px-12">
         <Link href="/explore" className="hover:text-gray-300">
@@ -55,10 +176,9 @@ export default function StartupProfile() {
         </Link>
         {" / "}
         <Link href="#" className="hover:text-gray-300">
-          {params.project}
+          {params.project || "NexaTech"}
         </Link>
         {" / "}
-       
       </div>
 
       {/* Banner */}
@@ -107,6 +227,10 @@ export default function StartupProfile() {
           </div>
 
           <div className="flex gap-2 md:ml-auto mt-2 md:mt-0">
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setIsInvestModalOpen(true)}>
+              <Coins className="mr-2 h-4 w-4" />
+              Invest
+            </Button>
             <Button variant="outline" size="icon" className="rounded-full">
               <Star className="h-5 w-5" />
             </Button>
@@ -214,6 +338,36 @@ export default function StartupProfile() {
                   <p className="mt-1 text-sm">Bootstrapped with initial angel investment</p>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div className="bg-[#151518] rounded-lg p-6 mt-6">
+            <h3 className="text-lg font-semibold mb-4">Crypto Investment</h3>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-blue-600/20 flex items-center justify-center">
+                  <Coins className="h-5 w-5 text-blue-400" />
+                </div>
+                <div>
+                  <p className="font-medium">Current Round</p>
+                  <p className="text-sm text-gray-400">0.1 - 5 ETH per investor</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-blue-600/20 flex items-center justify-center">
+                  <TrendingUp className="h-5 w-5 text-blue-400" />
+                </div>
+                <div>
+                  <p className="font-medium">Projected Growth</p>
+                  <p className="text-sm text-gray-400">+180% in 12 months</p>
+                </div>
+              </div>
+
+              <Button className="w-full bg-blue-600 hover:bg-blue-700 mt-2" onClick={() => setIsInvestModalOpen(true)}>
+                <Coins className="mr-2 h-4 w-4" />
+                Invest Now
+              </Button>
             </div>
           </div>
 
