@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { Inter } from "next/font/google";
+import { Playfair_Display } from "next/font/google";
 import { NotificationProvider } from "@/context/NotificationContext";
 import NavBar from "@/components/ui/navbar";
 
@@ -15,7 +16,9 @@ const geistMono = localFont({
   variable: "--font-geist-mono",
   weight: "100 900",
 });
+
 const inter = Inter({ subsets: ["latin"] });
+
 
 export const metadata: Metadata = {
   title: "ZeedChain - Startup Equity NFT Platform",
