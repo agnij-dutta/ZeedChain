@@ -35,11 +35,16 @@ describe("StakeholderGovernance", function () {
 
     // Deploy FractionalInvestment
     const FractionalInvestment = await ethers.getContractFactory("FractionalInvestment");
-    fractionalInvestment = await FractionalInvestment.deploy(await equityNFTFactory.getAddress());
+    fractionalInvestment = await FractionalInvestment.deploy(
+      await equityNFTFactory.getAddress(),
+      owner.address // Use owner as fee collector
+    );
 
-    // Deploy StakeholderGovernance
+    // Deploy StakeholderGovernance with FractionalInvestment address
     const StakeholderGovernance = await ethers.getContractFactory("StakeholderGovernance");
-    stakeholderGovernance = await StakeholderGovernance.deploy(await fractionalInvestment.getAddress());
+    stakeholderGovernance = await StakeholderGovernance.deploy(
+      await fractionalInvestment.getAddress()
+    );
 
     // Register and validate a startup
     const registerTx = await equityNFTFactory.connect(owner).registerStartup(

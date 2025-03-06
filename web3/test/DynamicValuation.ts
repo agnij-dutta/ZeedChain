@@ -15,16 +15,15 @@ describe("DynamicValuation", function () {
   let owner: SignerWithAddress;
   let founder: SignerWithAddress;
   let nonOwner: SignerWithAddress;
-  let startupId: number;
+  let startupId: string;
 
   const STARTUP_NAME = "Test Startup";
   const STARTUP_DESC = "Test Description";
   const TOTAL_SHARES = 1000000;
-  const INITIAL_VALUATION = ethers.parseEther("1000000"); // 1M ETH
-  const UPDATE_INTERVAL = 24 * 60 * 60; // 1 day in seconds
-  const GRACE_PERIOD = 60 * 60; // 1 hour in seconds
   const DECIMALS = 8;
   const INITIAL_PRICE = 100000000; // 1000.00 USD with 8 decimals
+  const UPDATE_INTERVAL = 24 * 60 * 60; // 1 day in seconds
+  const GRACE_PERIOD = 60 * 60; // 1 hour in seconds
 
   beforeEach(async function () {
     [owner, founder, nonOwner] = await ethers.getSigners();
@@ -37,11 +36,14 @@ describe("DynamicValuation", function () {
     const EquityNFTFactory = await ethers.getContractFactory("EquityNFTFactory");
     equityNFTFactory = await EquityNFTFactory.deploy();
 
-    // Deploy DynamicValuation
+    // Deploy DynamicValuation with factory address
     const DynamicValuation = await ethers.getContractFactory("DynamicValuation");
     dynamicValuation = await DynamicValuation.deploy(await equityNFTFactory.getAddress());
 
-    // Register a startup
+    // Add owner as validator first
+    await equityNFTFactory.addValidator(owner.address);
+
+    // Register a startup with initial price as valuation
     const tx = await equityNFTFactory.connect(founder).registerStartup(
       STARTUP_NAME,
       STARTUP_DESC,
@@ -52,9 +54,8 @@ describe("DynamicValuation", function () {
     const event = receipt.logs.find((e: any) => e.eventName === "StartupRegistered");
     startupId = event?.args?.tokenId?.toString();
 
-    // Add founder as validator and validate startup
-    await equityNFTFactory.addValidator(founder.address);
-    await equityNFTFactory.connect(founder).validateStartup(startupId, true);
+    // Validate startup using owner (who is now a validator)
+    await equityNFTFactory.validateStartup(startupId, true);
   });
 
   describe("Price Feed Integration", function () {
@@ -112,7 +113,7 @@ describe("DynamicValuation", function () {
       
       // Try to update with 50% increase (above 30% threshold)
       await time.increase(UPDATE_INTERVAL);
-      const newPrice = INITIAL_PRICE * 150 / 100;
+      const newPrice = 165000000; // 50% increase from previous value
       await mockPriceFeed.updateAnswer(newPrice);
       
       await expect(

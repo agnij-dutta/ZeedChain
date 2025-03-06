@@ -7,29 +7,38 @@ import "./chainlink-functions/dev/v1_0_0/FunctionsRequest.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract AIAdvisorIntegration is FunctionsClient, Ownable, ReentrancyGuard {
+contract FinancialDataOracle is FunctionsClient, Ownable, ReentrancyGuard {
     using FunctionsRequest for FunctionsRequest.Request;
-
-    struct AIAdvice {
+    
+    struct FinancialMetrics {
         uint256 startupId;
-        uint256 confidenceScore;
-        string recommendation;
+        uint256 revenue;
+        uint256 userGrowth;
+        uint256 marketSize;
+        uint256 burnRate;
         uint256 timestamp;
-        bool isValid;
     }
     
-    mapping(uint256 => AIAdvice[]) public startupAdvice;
+    mapping(uint256 => FinancialMetrics[]) public startupMetrics;
     mapping(bytes32 => uint256) private requestToStartupId;
+    mapping(uint256 => uint256) private lastUpdateTime;
+
+    uint256 public constant MIN_UPDATE_INTERVAL = 7 days;
     
-    event AdviceRequested(bytes32 indexed requestId, uint256 indexed startupId);
-    event AdviceReceived(uint256 indexed startupId, string recommendation, uint256 confidenceScore);
-    event RequestFailed(bytes32 indexed requestId, bytes reason);
-    
+    event MetricsRequested(bytes32 indexed requestId, uint256 indexed startupId);
+    event MetricsReceived(
+        uint256 indexed startupId,
+        uint256 revenue,
+        uint256 userGrowth,
+        uint256 marketSize,
+        uint256 burnRate
+    );
+
     uint64 private s_subscriptionId;
     bytes32 private s_donId;
     uint32 private s_gasLimit;
     bytes private s_source;
-
+    
     constructor(
         address router,
         uint64 subscriptionId,
@@ -43,8 +52,10 @@ contract AIAdvisorIntegration is FunctionsClient, Ownable, ReentrancyGuard {
         s_gasLimit = 300000;
         s_source = source;
     }
-
-    function requestAIAdvice(uint256 startupId) external nonReentrant returns (bytes32) {
+    
+    function requestFinancialMetrics(uint256 startupId) external returns (bytes32) {
+        require(block.timestamp >= lastUpdateTime[startupId] + MIN_UPDATE_INTERVAL, "Update too soon");
+        
         string[] memory args = new string[](1);
         args[0] = toString(startupId);
 
@@ -60,52 +71,66 @@ contract AIAdvisorIntegration is FunctionsClient, Ownable, ReentrancyGuard {
         );
 
         requestToStartupId[requestId] = startupId;
-        emit AdviceRequested(requestId, startupId);
+        lastUpdateTime[startupId] = block.timestamp;
         
+        emit MetricsRequested(requestId, startupId);
         return requestId;
     }
-
+    
     function fulfillRequest(
         bytes32 requestId,
         bytes memory response,
         bytes memory err
     ) internal override {
         if (err.length > 0) {
-            emit RequestFailed(requestId, err);
             return;
         }
 
         uint256 startupId = requestToStartupId[requestId];
+        uint256[] memory metrics = abi.decode(response, (uint256[]));
+        require(metrics.length == 4, "Invalid response length");
         
-        // Decode the response which should be ABI encoded (recommendation, confidenceScore)
-        (string memory recommendation, uint256 confidenceScore) = abi.decode(response, (string, uint256));
-        
-        AIAdvice memory newAdvice = AIAdvice({
+        FinancialMetrics memory data = FinancialMetrics({
             startupId: startupId,
-            confidenceScore: confidenceScore,
-            recommendation: recommendation,
-            timestamp: block.timestamp,
-            isValid: true
+            revenue: metrics[0],
+            userGrowth: metrics[1],
+            marketSize: metrics[2],
+            burnRate: metrics[3],
+            timestamp: block.timestamp
         });
         
-        startupAdvice[startupId].push(newAdvice);
-        emit AdviceReceived(startupId, recommendation, confidenceScore);
-    }
-
-    function getLatestAdvice(uint256 startupId) external view returns (
-        string memory recommendation,
-        uint256 confidenceScore,
-        uint256 timestamp
-    ) {
-        require(startupAdvice[startupId].length > 0, "No advice available");
-        AIAdvice memory latest = startupAdvice[startupId][startupAdvice[startupId].length - 1];
-        return (latest.recommendation, latest.confidenceScore, latest.timestamp);
+        startupMetrics[startupId].push(data);
+        emit MetricsReceived(
+            startupId,
+            metrics[0],
+            metrics[1],
+            metrics[2],
+            metrics[3]
+        );
     }
     
-    function getAllAdvice(uint256 startupId) external view returns (AIAdvice[] memory) {
-        return startupAdvice[startupId];
+    function getLatestMetrics(uint256 startupId) external view returns (
+        uint256 revenue,
+        uint256 userGrowth,
+        uint256 marketSize,
+        uint256 burnRate,
+        uint256 timestamp
+    ) {
+        require(startupMetrics[startupId].length > 0, "No metrics available");
+        FinancialMetrics memory latest = startupMetrics[startupId][startupMetrics[startupId].length - 1];
+        return (
+            latest.revenue,
+            latest.userGrowth,
+            latest.marketSize,
+            latest.burnRate,
+            latest.timestamp
+        );
     }
-
+    
+    function getHistoricalMetrics(uint256 startupId) external view returns (FinancialMetrics[] memory) {
+        return startupMetrics[startupId];
+    }
+    
     function updateConfig(
         uint64 subscriptionId,
         bytes32 donId,

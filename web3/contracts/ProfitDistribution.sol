@@ -24,7 +24,7 @@ contract ProfitDistribution is ReentrancyGuard {
     event ProfitDistributed(uint256 indexed startupId, uint256 amount, uint256 distributionIndex);
     event ProfitClaimed(uint256 indexed startupId, address indexed investor, uint256 amount, uint256 distributionIndex);
 
-    constructor(address _fractionalInvestment) {
+    constructor(address payable _fractionalInvestment) {
         fractionalInvestment = FractionalInvestment(_fractionalInvestment);
     }
 
@@ -37,6 +37,7 @@ contract ProfitDistribution is ReentrancyGuard {
         newDistribution.remainingAmount = msg.value;
         newDistribution.timestamp = block.timestamp;
 
+        lastDistributionIndex[startupId] = distributionIndex;
         emit ProfitDistributed(startupId, msg.value, distributionIndex);
     }
 
@@ -55,6 +56,7 @@ contract ProfitDistribution is ReentrancyGuard {
         uint256 totalShares = startup.totalShares;
 
         uint256 amount = (distribution.totalAmount * shares) / totalShares;
+        require(amount <= distribution.remainingAmount, "Insufficient remaining amount");
         
         distribution.claimed[msg.sender] = true;
         distribution.remainingAmount -= amount;
@@ -70,7 +72,8 @@ contract ProfitDistribution is ReentrancyGuard {
         uint256 count = 0;
 
         for (uint256 i = 0; i < distributions[startupId].length; i++) {
-            if (!distributions[startupId][i].claimed[investor]) {
+            if (!distributions[startupId][i].claimed[investor] && 
+                fractionalInvestment.getInvestorShares(startupId, investor) > 0) {
                 unclaimedIndices[count] = i;
                 count++;
             }

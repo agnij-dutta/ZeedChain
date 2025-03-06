@@ -1,11 +1,9 @@
 import { ethers } from "hardhat";
-import { getConfigValue } from "../utils/config";
+import { SEPOLIA } from "../utils/config";
 
 async function main() {
-  console.log("Starting deployment...");
-
-  // For local development, use mock address for oracle
-  const mockOracle = "0x0000000000000000000000000000000000000002";
+  const [deployer] = await ethers.getSigners();
+  console.log("Deploying contracts with account:", deployer.address);
 
   // Deploy EquityNFTFactory
   const EquityNFTFactory = await ethers.getContractFactory("EquityNFTFactory");
@@ -43,45 +41,89 @@ async function main() {
   await profitDistribution.waitForDeployment();
   console.log("ProfitDistribution deployed to:", await profitDistribution.getAddress());
 
-  // Deploy AIAdvisorIntegration with mock oracle address for local development
+  // Deploy AIAdvisorIntegration
   const AIAdvisorIntegration = await ethers.getContractFactory("AIAdvisorIntegration");
-  const aiAdvisorIntegration = await AIAdvisorIntegration.deploy(mockOracle);
-  await aiAdvisorIntegration.waitForDeployment();
-  console.log("AIAdvisorIntegration deployed to:", await aiAdvisorIntegration.getAddress());
+  const aiAdvisor = await AIAdvisorIntegration.deploy(SEPOLIA.LINK_TOKEN, SEPOLIA.CHAINLINK_ORACLE);
+  await aiAdvisor.waitForDeployment();
+  console.log("AIAdvisorIntegration deployed to:", await aiAdvisor.getAddress());
 
-  // Setup contract permissions
-  console.log("\nSetting up contract permissions...");
+  // Deploy InvestmentEscrow
+  const InvestmentEscrow = await ethers.getContractFactory("InvestmentEscrow");
+  const investmentEscrow = await InvestmentEscrow.deploy(await equityNFTFactory.getAddress());
+  await investmentEscrow.waitForDeployment();
+  console.log("InvestmentEscrow deployed to:", await investmentEscrow.getAddress());
 
-  // Add FractionalInvestment as trusted issuer in EquityNFTFactory
-  const addIssuerTx = await equityNFTFactory.addTrustedIssuer(await fractionalInvestment.getAddress());
-  await addIssuerTx.wait();
-  console.log("Added FractionalInvestment as trusted issuer");
+  // Deploy Financial Data Oracle
+  const FinancialDataOracle = await ethers.getContractFactory("FinancialDataOracle");
+  const financialDataOracle = await FinancialDataOracle.deploy(
+    SEPOLIA.LINK_TOKEN,
+    SEPOLIA.CHAINLINK_ORACLE
+  );
+  await financialDataOracle.waitForDeployment();
+  console.log("FinancialDataOracle deployed to:", await financialDataOracle.getAddress());
 
-  // Add StartupValidation as validator in EquityNFTFactory
-  const addValidatorTx = await equityNFTFactory.addValidator(await startupValidation.getAddress());
-  await addValidatorTx.wait();
-  console.log("Added StartupValidation as validator");
+  // Deploy Verification Oracle
+  const kycJobId = ethers.encodeBytes32String("kyc-verification-job");
+  const amlJobId = ethers.encodeBytes32String("aml-check-job");
+  const credentialsJobId = ethers.encodeBytes32String("credentials-validation-job");
 
-  console.log("\nDeployment completed successfully!");
+  const VerificationOracle = await ethers.getContractFactory("VerificationOracle");
+  const verificationOracle = await VerificationOracle.deploy(
+    SEPOLIA.LINK_TOKEN,
+    SEPOLIA.CHAINLINK_ORACLE,
+    kycJobId,
+    amlJobId,
+    credentialsJobId
+  );
+  await verificationOracle.waitForDeployment();
+  console.log("VerificationOracle deployed to:", await verificationOracle.getAddress());
 
-  // Return all deployed addresses for frontend configuration
-  return {
+  // Deploy Performance Metrics Oracle
+  const PerformanceMetricsOracle = await ethers.getContractFactory("PerformanceMetricsOracle");
+  const performanceMetricsOracle = await PerformanceMetricsOracle.deploy(
+    SEPOLIA.LINK_TOKEN,
+    SEPOLIA.CHAINLINK_ORACLE
+  );
+  await performanceMetricsOracle.waitForDeployment();
+  console.log("PerformanceMetricsOracle deployed to:", await performanceMetricsOracle.getAddress());
+
+  // Set up roles and permissions
+  const VALIDATOR_ROLE = await verificationOracle.VALIDATOR_ROLE();
+  const METRICS_PROVIDER_ROLE = await performanceMetricsOracle.METRICS_PROVIDER_ROLE();
+
+  // Grant roles to deployer for initial setup
+  await verificationOracle.grantRole(VALIDATOR_ROLE, deployer.address);
+  await performanceMetricsOracle.grantRole(METRICS_PROVIDER_ROLE, deployer.address);
+  
+  // Add deployer as validator in EquityNFTFactory
+  await equityNFTFactory.addValidator(deployer.address);
+
+  // Set up price feed for ETH/USD in DynamicValuation
+  // This will be used as a base price feed for startup valuations
+  await dynamicValuation.setPriceFeed(0, SEPOLIA.ETH_USD_PRICE_FEED);
+
+  console.log("Initial setup completed");
+
+  // Save deployment addresses
+  const deployedContracts = {
     equityNFTFactory: await equityNFTFactory.getAddress(),
     fractionalInvestment: await fractionalInvestment.getAddress(),
     dynamicValuation: await dynamicValuation.getAddress(),
     startupValidation: await startupValidation.getAddress(),
     stakeholderGovernance: await stakeholderGovernance.getAddress(),
     profitDistribution: await profitDistribution.getAddress(),
-    aiAdvisorIntegration: await aiAdvisorIntegration.getAddress(),
+    aiAdvisor: await aiAdvisor.getAddress(),
+    investmentEscrow: await investmentEscrow.getAddress(),
+    financialDataOracle: await financialDataOracle.getAddress(),
+    verificationOracle: await verificationOracle.getAddress(),
+    performanceMetricsOracle: await performanceMetricsOracle.getAddress()
   };
+
+  console.log("Deployed contract addresses:", deployedContracts);
 }
 
 main()
-  .then((addresses) => {
-    console.log("\nDeployed contract addresses:");
-    console.log(JSON.stringify(addresses, null, 2));
-    process.exit(0);
-  })
+  .then(() => process.exit(0))
   .catch((error) => {
     console.error(error);
     process.exit(1);

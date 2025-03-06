@@ -30,7 +30,7 @@ contract StakeholderGovernance is ReentrancyGuard {
     event Voted(uint256 indexed proposalId, address indexed voter, bool support, uint256 shares);
     event ProposalExecuted(uint256 indexed proposalId);
 
-    constructor(address _fractionalInvestment) {
+    constructor(address payable _fractionalInvestment) {
         fractionalInvestment = FractionalInvestment(_fractionalInvestment);
     }
 

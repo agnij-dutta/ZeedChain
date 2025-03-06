@@ -5,7 +5,10 @@ export default buildModule("EquityNFTs", (m) => {
   
   const fractionalInvestment = m.contract(
     "FractionalInvestment",
-    [equityNFTFactory]
+    [
+      equityNFTFactory,
+      m.getParameter("feeCollector")
+    ]
   );
 
   const dynamicValuation = m.contract(
