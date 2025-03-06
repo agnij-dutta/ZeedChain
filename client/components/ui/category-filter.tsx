@@ -30,8 +30,8 @@ const CategoryFilter = ({ selectedCategory, onCategoryChange }: CategoryFilterPr
           variant={selectedCategory === category.id ? "default" : "outline"}
           className={`flex items-center ${
             selectedCategory === category.id
-              ? "bg-primary text-primary-foreground"
-              : "bg-black text-white border-gray-800 hover:bg-gray-900"
+              ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white border-transparent"
+              : "bg-[#1A1A25] text-gray-300 border-[#2A2A35] hover:bg-[#2A2A35]"
           }`}
           onClick={() => onCategoryChange(category.id)}
         >
@@ -44,4 +44,3 @@ const CategoryFilter = ({ selectedCategory, onCategoryChange }: CategoryFilterPr
 }
 
 export default CategoryFilter
-
