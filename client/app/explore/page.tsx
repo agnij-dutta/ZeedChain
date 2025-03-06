@@ -110,7 +110,7 @@ export default function StartupExplorerPage() {
       )
 
   return (
-    <div className="min-h-screen  p-6">
+    <div className="min-h-screen  p-10">
       <div className="max-w-7xl mx-auto">
       <h1 className="bg-clip-text mb-6 text-transparent bg-gradient-to-r from-[#EAEAEA] via-[#DBDBDB] to-[#ADA996] font-regular text-5xl font-bold">Explore</h1>
         
