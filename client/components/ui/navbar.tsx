@@ -7,6 +7,7 @@ const NavBar = () => {
     { name: "Home", href: "/", searchHref: "/" },
     { name: "Project", href: "/project", searchHref: "/project" },
     { name: "Explore", href: "/explore", searchHref: "/explore" },
+    { name: "Dashboard", href: "/dashboard", searchHref: "/dashboard" },
   ];
   const currentPath = usePathname();
   const isActive = (itemLink: string) => {
