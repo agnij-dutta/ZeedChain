@@ -1,4 +1,25 @@
-"use client"
+"use client";
+import React from "react";
+import {
+  IconBrandGithub,
+  IconBrandX,
+  IconExchange,
+  IconHome,
+  IconNewSection,
+  IconTerminal2,
+  IconSettings,
+  IconCoins,
+  IconUser,
+  IconList,
+} from "@tabler/icons-react";
+import { FloatingDock } from "@/components/ui/floating-dock";
+import { Analytics } from "@/components/Analytics";
+import { Stats } from "@/components/Stats";
+import History from "@/components/History";
+import ProfileCard from "@/components/ProfileCard";
+import { BarChartCard } from "@/components/BarChart";
+import { FloatingNav } from "@/components/ui/floating-navbar";
+import Taskbar from "@/components/Taskbar";
 
 import { useState } from "react"
 import { Calendar, Download, Search, Users, Package, ChevronDown, Activity, TrendingUp,Copy } from "lucide-react"
@@ -26,20 +47,32 @@ const chartConfig = {
     color: "hsl(var(--chart-1))",
   },
 } satisfies ChartConfig
+const InvestorDashboard = () => {
 
-export default function InvestorDashboard() {
-  const [activeTab, setActiveTab] = useState("overview")
+  const links = [
+    {
+      title: "Founder",
+      icon: (
+        <IconUser className="h-full w-full text-neutral-500 dark:text-neutral-300" />
+      ),
+      href: "/founder",
+    },
 
+    {
+      title: "Investor",
+      icon: (
+        <IconCoins className="h-full w-full text-neutral-500 dark:text-neutral-300" />
+      ),
+      href: "/investor",
+    },
+  ];
   return (
     <div className="min-h-screen text-white">
-      <main className="container mx-auto p-4">
+      <main className="container mx-auto p-10">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <h1 className="bg-clip-text text-transparent bg-gradient-to-r from-[#EAEAEA] via-[#DBDBDB] to-[#ADA996] font-regular text-5xl font-bold">Investor Dashboard</h1>
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 border border-gray-700 px-3 py-2 rounded-md">
-              <Calendar className="h-4 w-4 text-gray-400" />
-    
-            </div>
+
           </div>
         </div>
 
@@ -71,40 +104,8 @@ export default function InvestorDashboard() {
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Card>
-            <CardHeader className="items-center pb-4">
-              <CardDescription>Performance Metrics</CardDescription>
-            </CardHeader>
-            <CardContent className="pb-0">
-              <ChartContainer config={chartConfig} className="mx-auto aspect-square max-h-[250px]">
-                <RadarChart data={chartData}>
-                  <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-                  <PolarGrid gridType="circle" radialLines={false} />
-                  <PolarAngleAxis dataKey="month" />
-                  <Radar
-                    dataKey="desktop"
-                    fill="var(--color-desktop)"
-                    fillOpacity={0.6}
-                    dot={{
-                      r: 4,
-                      fillOpacity: 1,
-                    }}
-                  />
-                </RadarChart>
-              </ChartContainer>
-            </CardContent>
-            <CardFooter className="flex-col gap-2 text-sm">
-              <div className="flex items-center gap-2 font-medium leading-none">
-                Trending up by 5.2% this month <TrendingUp className="h-4 w-4" />
-              </div>
-              <div className="flex items-center gap-2 leading-none text-muted-foreground">
-                January - June 2025
-              </div>
-            </CardFooter>
-          </Card>
-
-          <Card className="border border-gray-700">
+        <Analytics />
+        <Card className="border mt-5">
             <CardContent className="p-6">
               <h2 className="text-lg font-medium mb-2">Recent Investors</h2>
               <p className="text-sm text-gray-400 mb-4">This month {3} new investors joined you </p>
@@ -117,49 +118,22 @@ export default function InvestorDashboard() {
               </div>
             </CardContent>
           </Card>
-        </div>
-        <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Additional Information</CardTitle>
-                <CardDescription>Other project details</CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-4">
-                <div className="grid gap-2">
-                  <div className="font-medium">Project Deployed</div>
-                  <div className="text-sm text-muted-foreground">{("2023-01-01")}</div>
-                </div>
-                <Separator />
-                <div className="grid gap-2">
-                  <div className="font-medium">Project Expires</div>
-                  <div className="text-sm text-muted-foreground">{("2024-11-30")}</div>
-                </div>
-                <Separator />
-                <div className="grid gap-2">
-                  <div className="font-medium">Project   ID</div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    #3
-                    <Button variant="ghost" size="icon" className="h-6 w-6">
-                      <Copy className="h-3 w-3" />
-                      <span className="sr-only">Copy member ID</span>
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
       </main>
+      <Taskbar>
+        <FloatingDock items={links} desktopClassName="" />
+      </Taskbar>
     </div>
-  )
-}
-
+  );
+};
 function MetricCard({ title, value, change, icon }) {
   return (
-    <Card className="border border-gray-700">
+    <Card className="border ">
       <CardContent className="p-6">
         <div className="flex justify-between items-start">
           <div>
             <p className="text-sm text-gray-400 mb-1">{title}</p>
             <h3 className="text-2xl font-bold">{value}</h3>
-            <p className="text-xs text-green-500 mt-1">{change}</p>
+            <p className="text-xs text-[#136a8a] mt-1">{change}</p>
           </div>
           <div className="text-gray-400">{icon}</div>
         </div>
@@ -172,7 +146,7 @@ function SaleItem({ name, email, amount }) {
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-3">
-        <Avatar className="h-10 w-10 border border-gray-700">
+        <Avatar className="h-10 w-10 border">
           <span className="text-xs">{name.charAt(0)}</span>
         </Avatar>
         <div>
@@ -180,7 +154,7 @@ function SaleItem({ name, email, amount }) {
           <p className="text-sm text-gray-400">{email}</p>
         </div>
       </div>
-      <span className="text-green-500 font-medium">{amount}</span>
+      <span className="text-[#136a8a] font-medium">{amount}</span>
     </div>
   )
 }
@@ -209,3 +183,4 @@ function RevenueChart() {
     </div>
   )
 }
+export default InvestorDashboard;

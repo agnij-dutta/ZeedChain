@@ -110,9 +110,9 @@ export default function StartupExplorerPage() {
       )
 
   return (
-    <div className="min-h-screen bg-[#0B0B13] p-6">
+    <div className="min-h-screen  p-6">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-white text-2xl font-bold mb-6">Explore Startups</h1>
+      <h1 className="bg-clip-text mb-6 text-transparent bg-gradient-to-r from-[#EAEAEA] via-[#DBDBDB] to-[#ADA996] font-regular text-5xl font-bold">Explore</h1>
         
         <CategoryFilter 
           selectedCategory={selectedCategory}

@@ -2,12 +2,11 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Button } from "./button";
 const NavBar = () => {
   const links = [
-    { name: "Home", href: "/", searchHref: "/" },
-    { name: "Project", href: "/project", searchHref: "/project" },
     { name: "Explore", href: "/explore", searchHref: "/explore" },
-    { name: "Dashboard", href: "/dashboard", searchHref: "/dashboard" },
+    { name: "Dashboard", href: "/investor", searchHref: "/investor" },
   ];
   const currentPath = usePathname();
   const isActive = (itemLink: string) => {
@@ -18,7 +17,7 @@ const NavBar = () => {
   };
 
   return (
-    <header className="border-grid sticky top-0 z-[60] w-full border-b border-dashed bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <>{currentPath !== "/" && (<header className="border-grid sticky top-0 z-[60] w-full border-b border-dashed bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container-wrapper">
         <div className="container flex h-14 items-center gap-2 justify-between px-5 md:gap-4 ">
           <a href="/">
@@ -42,10 +41,15 @@ const NavBar = () => {
                 {item.name}
               </Link>
             ))}
+            <Button variant="outline" className="text-l font-light bg-transparent">
+              Connect Wallet
+            </Button>
           </nav>
         </div>
       </div>
-    </header>
+    </header>)}
+    </>
+    
   );
 };
 

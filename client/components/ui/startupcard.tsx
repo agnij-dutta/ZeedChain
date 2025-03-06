@@ -156,7 +156,8 @@ const StartupCard = ({ startup, variant = "bounty" }: StartupCardProps) => {
             </div>
           </div>
 
-          <button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 py-2 rounded-md font-medium transition-colors"
+          <button className="w-full bg-gradient-to-r from-[#267871] to-[#136a8a] transition duration-300 hover:from-[#1b5d5a] hover:to-[#0f566e]
+ text-white px-4 py-2 rounded-md font-medium transition-colors"
                   onClick={handleClick}>
             Support This Startup
           </button>

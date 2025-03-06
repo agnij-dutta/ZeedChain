@@ -30,7 +30,7 @@ const CategoryFilter = ({ selectedCategory, onCategoryChange }: CategoryFilterPr
           variant={selectedCategory === category.id ? "default" : "outline"}
           className={`flex items-center ${
             selectedCategory === category.id
-              ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white border-transparent"
+              ? "bg-gradient-to-r from-[#267871] to-[#136a8a] text-white border-transparent"
               : "bg-[#1A1A25] text-gray-300 border-[#2A2A35] hover:bg-[#2A2A35]"
           }`}
           onClick={() => onCategoryChange(category.id)}
