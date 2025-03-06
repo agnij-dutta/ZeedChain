@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Calendar, Download, Search, Users, Package, ChevronDown, Activity, TrendingUp,Copy } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/shared/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar } from "@/components/ui/avatar"

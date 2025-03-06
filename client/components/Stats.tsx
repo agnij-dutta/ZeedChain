@@ -7,7 +7,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/shared/card"
 import { ChartConfig, ChartContainer } from "@/components/ui/chart"
 
 const data = [
