@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { FinalThoughtsCard } from "@/components/final-thoughts"
 import { RiskThoughtsCard } from "@/components/riskthoughts"
 import { FinancialThoughtsCard } from "@/components/financial-thoughts"
+import ChatbotModal from '@/components/chatbot'
 
 export default function StartupProfile() {
   const params = useParams()
@@ -70,7 +71,7 @@ export default function StartupProfile() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0e] text-gray-100">
+    <div className="min-h-screen  bg-[#0a0a0e] text-gray-100">
       {/* Mobile menu */}
       {isMenuOpen && (
         <div className="fixed inset-0 z-50 bg-black/90 md:hidden">
@@ -478,6 +479,8 @@ export default function StartupProfile() {
           </div>
         </div>
       </main>
+      <div className="fixed bottom-4 left-4 z-40">
+      </div>
     </div>
   )
 }

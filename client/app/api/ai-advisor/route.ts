@@ -151,6 +151,7 @@ Be specific and provide actionable advice.`;
   return recommendationText;
 }
 
+
 // Main handler function
 export async function POST(req) {
   console.log("🔄 POST request received");
