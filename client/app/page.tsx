@@ -25,7 +25,7 @@ export default function Home() {
   const router = useRouter();
   return (
     <>
-      <div className="absolute top-0 left-0 h-screen w-screen bg-black">
+      <div className="absolute top-0 left-0 h-screen w-screen">
         <NoiseFilter />
         <div className="fixed top-0 left-0 h-full w-full z-0">
           <VantaBackground />
