@@ -462,15 +462,17 @@ export default function StartupProfile() {
               </div>
             ) : (
               <div className="space-y-6">
-                <FinalThoughtsCard
-                  text={advisorData.investment_recommendations}
-                />
-                <FinancialThoughtsCard 
-                  text={advisorData.financial_analysis}
-                />
-                <RiskThoughtsCard
-                  text={advisorData.risk_analysis}
-                />
+              <div className="space-y-6">
+            <FinalThoughtsCard
+              text={advisorData.investment_recommendations}
+            />
+            <FinancialThoughtsCard 
+              text={advisorData.financial_analysis}
+            />
+            <RiskThoughtsCard
+              text={advisorData.risk_analysis}
+            />
+</div>
               </div>
             )}
           </div>
