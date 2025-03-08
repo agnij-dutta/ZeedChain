@@ -1,13 +1,12 @@
 // app/page.jsx
 "use client";
 import { useState, useRef, useEffect } from "react";
-import { Send, Mic, PauseCircle, Sparkles } from "lucide-react";
+import { Send, Mic, PauseCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Import your components
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -47,21 +46,51 @@ export default function AIChatInterface() {
     setMessages((prev) => [...prev, userMessage]);
     setInputValue("");
 
-    // Simulate AI thinking
+    // Set loading state
     setIsLoading(true);
     
-    // Simulate response delay (1.5-3 seconds)
-    const delay = 1500 + Math.random() * 1500;
-    setTimeout(() => {
-      // Fake AI response
+    try {
+      // Send request to API
+      const response = await fetch('/api/ai-advisor', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          message: inputValue,
+          history: messages 
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('API request failed');
+      }
+      
+      const data = await response.json();
+      
+      // Add AI response
       const aiResponse = {
         role: "assistant",
-        content: `I've processed your message: "${inputValue}". Here's my response based on my training data.`,
+        content: data.response,
         timestamp: new Date().toLocaleTimeString(),
       };
+      
       setMessages((prev) => [...prev, aiResponse]);
+    } catch (error) {
+      console.error('Error:', error);
+      
+      // Add error message
+      const errorMessage = {
+        role: "assistant",
+        content: "Sorry, I encountered an error while processing your request. Please try again later.",
+        timestamp: new Date().toLocaleTimeString(),
+        isError: true,
+      };
+      
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
       setIsLoading(false);
-    }, delay);
+    }
   };
 
   const toggleListening = () => {
@@ -116,18 +145,28 @@ export default function AIChatInterface() {
                   "max-w-[80%]",
                   message.role === "user" 
                     ? "bg-blue-500 text-white border-blue-600" 
-                    : "bg-white dark:bg-gray-800"
+                    : message.isError 
+                      ? "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800" 
+                      : "bg-white dark:bg-gray-800"
                 )}>
                   <CardContent className="p-3">
                     <p className={cn(
                       "text-sm",
-                      message.role === "user" ? "text-white" : "text-gray-700 dark:text-gray-300"
+                      message.role === "user" 
+                        ? "text-white" 
+                        : message.isError 
+                          ? "text-red-700 dark:text-red-300" 
+                          : "text-gray-700 dark:text-gray-300"
                     )}>
                       {message.content}
                     </p>
                     <p className={cn(
                       "text-xs mt-1",
-                      message.role === "user" ? "text-blue-100" : "text-gray-400"
+                      message.role === "user" 
+                        ? "text-blue-100" 
+                        : message.isError 
+                          ? "text-red-400 dark:text-red-400" 
+                          : "text-gray-400"
                     )}>
                       {message.timestamp}
                     </p>
