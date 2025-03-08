@@ -108,9 +108,9 @@ export default function KycForm() {
   };
 
   return (
-    <Card className="shadow-lg bg-black text-white">
+    <Card className="shadow-lg bg-black text-white px-20 py-6 max-w-[90vw] mx-auto">
       <CardHeader className="border-b border-gray-800">
-        <CardTitle className="text-2xl">Investor Verification</CardTitle>
+        <CardTitle className="text-4xl font-bold">Investor Verification</CardTitle>
         <CardDescription className="text-gray-400">Please provide your identification details and a photo for KYC verification</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
