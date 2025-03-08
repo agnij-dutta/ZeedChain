@@ -19,9 +19,9 @@ const NavBar = () => {
   return (
     <>{currentPath !== "/" && (<header className="border-grid sticky top-0 z-[60] w-full border-b border-dashed bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container-wrapper">
-        <div className="container flex h-14 items-center gap-2 justify-between px-5 md:gap-4 ">
+        <div className="container flex h-14 items-center gap-2 justify-between px-5 ">
           <a href="/">
-            <img src="/images/icon.png" className="w-8 h-8" alt="Logo" />
+            <img src="/images/zeedchainlogo-bw.png" className="w-6 h-7" alt="Logo" />
           </a>
           <nav className="flex items-center gap-7">
             {links.map((item) => (

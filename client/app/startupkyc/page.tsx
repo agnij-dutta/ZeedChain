@@ -9,9 +9,10 @@ import { Form } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
-
+import { useRouter } from "next/navigation"
 export default function StartupKYCForm() {
   const [step, setStep] = useState(1)
+  const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState({
     // Founder Information
@@ -62,7 +63,7 @@ export default function StartupKYCForm() {
 
   const submitForm = () => {
     setIsSubmitting(true)
-    
+    router.push('/create')
     // Bundle all data into a single payload
     const payload = {
       ...formData,
