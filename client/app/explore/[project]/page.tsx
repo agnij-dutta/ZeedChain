@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Check, Menu, Share2, Star, Volume2, X, Coins, TrendingUp, ArrowRight } from "lucide-react"
@@ -11,6 +11,9 @@ import { Badge } from "@/components/ui/badge"
 import { Slider } from "@/components/ui/slider"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { motion, AnimatePresence } from "framer-motion"
+import { FinalThoughtsCard } from "@/components/final-thoughts"
+import { RiskThoughtsCard } from "@/components/riskthoughts"
+import { FinancialThoughtsCard } from "@/components/financial-thoughts"
 
 export default function StartupProfile() {
   const params = useParams()
@@ -18,7 +21,42 @@ export default function StartupProfile() {
   const [isInvestModalOpen, setIsInvestModalOpen] = useState(false)
   const [investment, setInvestment] = useState(0.5)
   const [estimatedShares, setEstimatedShares] = useState(50)
+  const [advisorData, setAdvisorData] = useState({
+    retrieved_data: "",
+    risk_analysis: "",
+    financial_analysis: "",
+    investment_recommendations: ""
+  })
+  const [isLoading, setIsLoading] = useState(true)
 
+  // Fetch data from AI advisor API
+  useEffect(() => {
+    const fetchAdvisorData = async () => {
+      setIsLoading(true)
+      try {
+        const response = await fetch('/api/ai-advisor')
+        if (!response.ok) {
+          throw new Error('Failed to fetch advisor data')
+        }
+        const data = await response.json()
+        setAdvisorData(data)
+      } catch (error) {
+        console.error('Error fetching advisor data:', error)
+        // Set fallback data in case of error
+        setAdvisorData({
+          retrieved_data: "Unable to retrieve data at this time.",
+          risk_analysis: "Risk analysis currently unavailable.",
+          financial_analysis: "Financial analysis currently unavailable.",
+          investment_recommendations: "Investment recommendations currently unavailable."
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchAdvisorData()
+  }, [])
+ 
   // Calculate estimated shares based on investment amount
   const handleInvestmentChange = (value: number[]) => {
     setInvestment(value[0])
@@ -416,11 +454,28 @@ export default function StartupProfile() {
 
           <div className="bg-[#151518] rounded-lg p-6 mt-6">
             <h3 className="text-lg font-semibold mb-4">Contact</h3>
-            <Button className="w-full bg-blue-600 hover:bg-blue-700">Connect with NexaTech</Button>
+            <Button className="w-full bg-blue-600 hover:bg-blue-700 mb-6">Connect with NexaTech</Button>
+            
+            {isLoading ? (
+              <div className="space-y-4">
+                <p className="text-sm text-gray-400">Loading advisor insights...</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <FinalThoughtsCard
+                  text={advisorData.investment_recommendations}
+                />
+                <FinancialThoughtsCard 
+                  text={advisorData.financial_analysis}
+                />
+                <RiskThoughtsCard
+                  text={advisorData.risk_analysis}
+                />
+              </div>
+            )}
           </div>
         </div>
       </main>
     </div>
   )
 }
-

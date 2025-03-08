@@ -1,59 +1,36 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { AIService } from '@/services/AIService';
+import { NextResponse } from 'next/server';
 
-const aiService = new AIService(process.env.NEXT_PUBLIC_GEMINI_API_KEY || '');
+// Simplified handler that fetches data from render endpoint and returns it directly
+export async function POST(request) {
+  try {
+    // Parse the incoming request JSON
+    const body = await request.json();
+    const { endpoint, text } = body;
 
-export async function POST(request: NextRequest) {
-    try {
-        const body = await request.json();
-        const { startupData, marketConditions, investorPreferences } = body;
+    // Build the URL for your FastAPI endpoint
+    const apiUrl = `https://ai-api-3.onrender.com/${endpoint}`;
 
-        if (!startupData) {
-            return NextResponse.json(
-                { error: 'Missing startup data' },
-                { status: 400 }
-            );
-        }
+    // Forward the request to FastAPI using fetch
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ text }),
+    });
 
-        const result = await aiService.generateInvestmentAdvice(
-            startupData,
-            marketConditions,
-            investorPreferences
-        );
-
-        return NextResponse.json(result);
-    } catch (error: any) {
-        console.error('AI Advisor error:', error);
-        return NextResponse.json(
-            { error: error.message || 'Failed to generate investment advice' },
-            { status: 500 }
-        );
-    }
-}
-
-export async function GET(request: NextRequest) {
-    const searchParams = request.nextUrl.searchParams;
-    const startupId = searchParams.get('startupId');
-
-    if (!startupId) {
-        return NextResponse.json(
-            { error: 'Missing startupId parameter' },
-            { status: 400 }
-        );
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
     }
 
-    try {
-        const startupData = await fetch(
-            `${process.env.NEXT_PUBLIC_RPC_URL}/startup/${startupId}`
-        ).then(res => res.json());
-
-        const analysis = await aiService.analyzeStartup(startupData);
-        return NextResponse.json(analysis);
-    } catch (error: any) {
-        console.error('AI Analysis error:', error);
-        return NextResponse.json(
-            { error: error.message || 'Failed to analyze startup' },
-            { status: 500 }
-        );
-    }
+    // Simply get the data and return it directly without any formatting
+    const data = await response.json();
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('Error:', error);
+    return NextResponse.json(
+      { error: `Failed to process request: ${error.message}` },
+      { status: 500 }
+    );
+  }
 }
