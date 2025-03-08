@@ -87,6 +87,8 @@ export default function KycForm() {
 
   // Reset to camera view
   const retake = () => {
+    stopCamera();
+    startCamera();
     setCapturedImage(null);
   };
 
